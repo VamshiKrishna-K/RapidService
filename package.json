@@ -1,0 +1,17 @@
+{
+  "name": "home-hub",
+  "version": "1.0.0",
+  "description": "MERN Stack Service Marketplace",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run start --prefix backend",
+    "server": "npm run dev --prefix backend",
+    "client": "npm run dev --prefix frontend",
+    "dev": "npm run dev-concurrent",
+    "install-all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev-concurrent": "npx concurrently \"npm run server\" \"npm run client\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
