@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle, MapPin, Shield, Star, MessageCircle, Calendar, Clock, Globe, User, Phone, X } from "lucide-react";
+import { ArrowLeft, CheckCircle, MapPin, Shield, Star, MessageCircle, Calendar, Clock, Globe, User, Phone, X, Loader2 } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
-import { mockProviders } from "@/lib/mock-data";
+import api from "@/lib/api";
 
 const containerStyle = {
   width: '100%',
@@ -11,15 +11,43 @@ const containerStyle = {
 
 const ProviderDetail = () => {
   const { id } = useParams();
-  const provider = mockProviders.find((p) => p.id === id);
+  const [provider, setProvider] = useState(null);
+  const [services, setServices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [tab, setTab] = useState("services");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [userRes, servicesRes] = await Promise.all([
+          api.get(`/auth/${id}`),
+          api.get(`/services`, { params: { providerId: id } })
+        ]);
+        setProvider(userRes.data);
+        setServices(servicesRes.data);
+      } catch (error) {
+        console.error("Error fetching provider data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!provider) {
     return (
@@ -29,15 +57,15 @@ const ProviderDetail = () => {
              <User className="w-10 h-10 text-muted-foreground/30" />
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-4">Provider not found</h2>
-          <Link to="/" className="bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl">Back to Explorer</Link>
+          <Link to="/" className="bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl">Back to Explore</Link>
         </div>
       </div>
     );
   }
 
   const center = {
-    lat: provider.latitude || 17.3850,
-    lng: provider.longitude || 78.4867
+    lat: (provider.coordinates && provider.coordinates[1]) || 17.3850,
+    lng: (provider.coordinates && provider.coordinates[0]) || 78.4867
   };
 
   return (
@@ -51,14 +79,12 @@ const ProviderDetail = () => {
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-accent to-primary rounded-[3rem] blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
-                <div className="relative w-32 h-32 md:w-48 md:h-48 rounded-[2.5rem] overflow-hidden border-4 border-primary shadow-2xl">
-                   <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" />
+                <div className="relative w-32 h-32 md:w-48 md:h-48 rounded-[2.5rem] overflow-hidden border-4 border-primary shadow-2xl bg-muted flex items-center justify-center font-black text-5xl">
+                   {provider.name?.charAt(0)}
                 </div>
-                {provider.verified && (
-                  <div className="absolute -bottom-2 -right-2 bg-[#10b981] text-white p-2.5 rounded-2xl shadow-xl border-4 border-primary">
+                <div className="absolute -bottom-2 -right-2 bg-[#10b981] text-white p-2.5 rounded-2xl shadow-xl border-4 border-primary">
                     <CheckCircle className="w-6 h-6 fill-current" />
-                  </div>
-                )}
+                </div>
             </div>
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
@@ -97,9 +123,9 @@ const ProviderDetail = () => {
 
             {tab === "services" && (
               <div className="space-y-6 animate-fade-up">
-                {provider.services.map((s, i) => (
+                {services.map((s, i) => (
                   <button 
-                    key={s.name} 
+                    key={s._id} 
                     onClick={() => setSelectedService(i)} 
                     className={`w-full group text-left p-8 rounded-[2.5rem] border-2 transition-all shadow-sm ${
                       selectedService === i 
@@ -113,11 +139,11 @@ const ProviderDetail = () => {
                           <Star className="w-7 h-7" />
                         </div>
                         <div>
-                          <h3 className="font-black text-xl text-foreground uppercase tracking-tight mb-1">{s.name}</h3>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{s.duration} duration</p>
+                          <h3 className="font-black text-xl text-foreground uppercase tracking-tight mb-1">{s.title}</h3>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{s.description}</p>
                         </div>
                       </div>
-                      <div className="text-3xl font-black text-foreground">₹{s.price}</div>
+                      <div className="text-3xl font-black text-foreground">₹{s.basePrice}</div>
                     </div>
                   </button>
                 ))}
@@ -147,25 +173,11 @@ const ProviderDetail = () => {
 
             {tab === "reviews" && (
               <div className="space-y-8 animate-fade-up">
-                {provider.reviews.map((r) => (
-                  <div key={r.user} className="bg-card border-2 border-border/50 rounded-[2.5rem] p-8 shadow-sm hover:shadow-lg transition-all">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-primary text-lg">{r.user.charAt(0)}</div>
-                         <div>
-                            <span className="font-black text-foreground uppercase tracking-tight block text-sm">{r.user}</span>
-                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{r.date}</span>
-                         </div>
-                      </div>
-                      <div className="flex gap-1 text-yellow-500">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`w-4 h-4 ${i < r.rating ? "fill-current" : "text-muted/30"}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground text-base font-medium leading-relaxed italic">"{r.text}"</p>
-                  </div>
-                ))}
+                <div className="bg-card border-2 border-dashed border-border rounded-[3rem] p-16 text-center">
+                   <MessageCircle className="w-10 h-10 text-muted-foreground/30 mx-auto mb-6" />
+                   <h3 className="text-xl font-bold text-foreground">No shared reviews yet</h3>
+                   <p className="text-sm font-medium text-muted-foreground">Be the first to project your experience after booking!</p>
+                </div>
               </div>
             )}
           </div>
@@ -187,8 +199,8 @@ const ProviderDetail = () => {
                  <div className="space-y-8">
                    <div className="bg-muted px-8 py-6 rounded-[2.5rem] border-2 border-border/50 shadow-inner">
                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Selected Work</p>
-                     <p className="text-2xl font-black text-foreground uppercase tracking-tight line-clamp-1">{provider.services[selectedService].name}</p>
-                     <p className="text-lg font-black text-primary mt-2">₹{provider.services[selectedService].price} <span className="text-xs text-muted-foreground uppercase">est. total</span></p>
+                     <p className="text-2xl font-black text-foreground uppercase tracking-tight line-clamp-1">{services[selectedService].title}</p>
+                     <p className="text-lg font-black text-primary mt-2">₹{services[selectedService].basePrice} <span className="text-xs text-muted-foreground uppercase">est. total</span></p>
                    </div>
                    
                    <div className="space-y-4">
@@ -199,7 +211,7 @@ const ProviderDetail = () => {
                    <div className="space-y-4">
                      <label className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] ml-2 block">Available Windows</label>
                      <div className="grid grid-cols-2 gap-3">
-                       {provider.availability?.map((slot) => (
+                       {["09:00 AM", "11:00 AM", "02:00 PM", "04:00 PM"].map((slot) => (
                          <button 
                            key={slot} 
                            onClick={() => setSelectedSlot(slot)} 
@@ -212,7 +224,7 @@ const ProviderDetail = () => {
                    </div>
 
                    <Link 
-                     to={`/booking/${provider.id}?service=${selectedService}&slot=${selectedSlot}`} 
+                     to={`/booking/${provider._id}?serviceId=${services[selectedService]._id}&slot=${selectedSlot}`} 
                      className={`block w-full text-center py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl ${selectedSlot ? "bg-[#10b981] text-white shadow-green-500/20 hover:scale-105 active:scale-95" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"}`}
                    >
                      Complete Booking

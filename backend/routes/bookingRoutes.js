@@ -4,11 +4,13 @@ const {
   createBooking,
   verifyPayment,
   updateBookingStatus,
+  getBookings,
 } = require('../controllers/bookingController');
 const { protect, authorize } = require('../middleware/auth');
 
 router.route('/')
-  .post(protect, authorize('user'), createBooking);
+  .post(protect, authorize('user'), createBooking)
+  .get(protect, getBookings);
 
 router.post('/verify', protect, authorize('user'), verifyPayment);
 

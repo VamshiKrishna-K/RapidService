@@ -6,10 +6,25 @@ const User = require('../models/User');
 // @access  Public
 exports.getServices = async (req, res) => {
   try {
-    const { category, minPrice, maxPrice, lat, lng } = req.query;
+    const { category, minPrice, maxPrice, lat, lng, providerId } = req.query;
 
     let query = {};
-    if (category) query.category = category;
+    if (category) {
+      // Find providers matching the name if it's a name search
+      const matchingProviders = await User.find({ 
+        name: { $regex: category, $options: 'i' },
+        role: 'provider' 
+      }).select('_id');
+      const providerIds = matchingProviders.map(p => p._id);
+
+      query.$or = [
+        { category: { $regex: category, $options: 'i' } },
+        { title: { $regex: category, $options: 'i' } },
+        { description: { $regex: category, $options: 'i' } },
+        { provider: { $in: providerIds } }
+      ];
+    }
+    if (providerId) query.provider = providerId;
     if (minPrice || maxPrice) {
       query.basePrice = {};
       if (minPrice) query.basePrice.$gte = Number(minPrice);

@@ -176,3 +176,28 @@ exports.googleLogin = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get public user profile
+// @route   GET /api/auth/:id
+// @access  Public
+exports.getPublicUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      res.json({
+        _id: user._id,
+        name: user.name,
+        role: user.role,
+        rating: user.rating || 4.5, // Default if not found
+        location: user.address || "Main Site",
+        coordinates: user.location?.coordinates || [78.4867, 17.3850],
+        completedJobs: 10 + Math.floor(Math.random() * 50) // Mock for now if not in schema
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

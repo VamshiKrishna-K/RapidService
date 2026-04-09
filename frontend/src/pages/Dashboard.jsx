@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Calendar, Bell, User, MapPin, X, Check, Loader2, LogOut, Search, Phone } from "lucide-react";
+import { Calendar, Bell, User, MapPin, X, Check, Loader2, LogOut, Search, Phone, CheckCircle } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api';
-import axios from "axios";
+import api from "@/lib/api";
 import { toast } from "sonner";
 
 const mapContainerStyle = {
@@ -22,14 +22,11 @@ const Dashboard = () => {
   
   const [tab, setTab] = useState("bookings");
   const [user, setUser] = useState(null);
-  const [mockBookings] = useState([
-    { id: 1, service: "House Cleaning", pro: "Anita Sharma", date: "April 15, 2024", time: "10:00 AM", status: "Upcoming", price: "₹800" },
-    { id: 2, service: "Electrician", pro: "Rahul Kumar", date: "April 10, 2024", time: "2:00 PM", status: "Completed", price: "₹450" }
+  const [bookings, setBookings] = useState([]);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Welcome to RapidService! Complete your profile to get started.", time: "Connected", read: false }
   ]);
-  const [mockNotifications] = useState([
-    { id: 1, text: "Your booking for House Cleaning has been confirmed.", time: "2 hours ago", read: false },
-    { id: 2, text: "Welcome to RapidService! Complete your profile to get started.", time: "1 day ago", read: true }
-  ]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [currentAddress, setCurrentAddress] = useState("");
@@ -38,6 +35,7 @@ const Dashboard = () => {
   const [markerPos, setMarkerPos] = useState(defaultCenter);
   const [autocomplete, setAutocomplete] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -50,15 +48,41 @@ const Dashboard = () => {
     if (storedUser) {
       const parsed = JSON.parse(storedUser);
       setUser(parsed);
-      setCurrentAddress(parsed.address || "");
-      setCurrentPhone(parsed.phone || "");
-      if (parsed.lat && parsed.lng) {
-        setMarkerPos({ lat: parsed.lat, lng: parsed.lng });
-      }
+      fetchUserProfile(parsed.token);
+      fetchBookings(parsed.token);
     } else {
       navigate("/login");
     }
   }, [navigate]);
+
+  const fetchUserProfile = async (token) => {
+    try {
+      const { data } = await api.get("/auth/profile", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUser(prev => ({ ...prev, ...data }));
+      setCurrentAddress(data.address || "");
+      setCurrentPhone(data.phone || "");
+      if (data.lat && data.lng) {
+        setMarkerPos({ lat: data.lat, lng: data.lng });
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    }
+  };
+
+  const fetchBookings = async (token) => {
+    try {
+      const { data } = await api.get("/bookings", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBookings(data);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const onMarkerDragEnd = (e) => {
     if (e.latLng) {
@@ -118,13 +142,20 @@ const Dashboard = () => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      // In a real app, this would be an API call
-      // const { data } = await axios.put(...)
+      const { data } = await api.put("/auth/profile", {
+        name: user.name,
+        phone: currentPhone,
+        address: currentAddress,
+        lat: markerPos.lat,
+        lng: markerPos.lng
+      }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
       
-      const updatedUser = { ...user, address: currentAddress, phone: currentPhone, lat: markerPos.lat, lng: markerPos.lng };
+      const updatedUser = { ...user, ...data };
       setUser(updatedUser);
       localStorage.setItem("userInfo", JSON.stringify(updatedUser));
-      toast.success("Profile updated perfectly!");
+      setShowSuccessPopup(true);
     } catch (error) {
       toast.error(error.response?.data?.message || "Error updating profile");
     } finally {
@@ -170,7 +201,7 @@ const Dashboard = () => {
             <nav className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm sticky top-24">
               {[
                 { key: "bookings", label: "My Bookings", icon: Calendar },
-                { key: "notifications", label: "Notifications", icon: Bell, badge: mockNotifications.filter(n => !n.read).length },
+                { key: "notifications", label: "Notifications", icon: Bell, badge: notifications.filter(n => !n.read).length },
                 { key: "profile", label: "Profile Settings", icon: User },
               ].map((item) => (
                 <button 
@@ -197,38 +228,38 @@ const Dashboard = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  {mockBookings.length === 0 ? (
+                  {bookings.length === 0 ? (
                     <div className="text-center py-20 bg-card rounded-3xl border-2 border-dashed border-border animate-fade-in">
                       <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                       <p className="text-lg font-bold text-foreground mb-2">No bookings yet</p>
                       <Link to="/" className="text-primary font-bold">Start exploring services</Link>
                     </div>
                   ) : (
-                    mockBookings.map(booking => (
-                      <div key={booking.id} className="bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow">
+                    bookings.map(booking => (
+                      <div key={booking._id} className="bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-4">
                            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
                              <Calendar className="w-6 h-6" />
                            </div>
                            <div>
-                             <h3 className="font-bold text-foreground">{booking.service}</h3>
-                             <p className="text-sm text-muted-foreground font-medium">with {booking.pro}</p>
+                             <h3 className="font-bold text-foreground">{booking.service?.title || "Unknown Service"}</h3>
+                             <p className="text-sm text-muted-foreground font-medium">with {booking.provider?.name || "Professional"}</p>
                            </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
                            <div>
-                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Date & Time</p>
-                             <p className="text-sm font-bold">{booking.date} @ {booking.time}</p>
+                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Date</p>
+                             <p className="text-sm font-bold">{new Date(booking.scheduleDate).toLocaleDateString()}</p>
                            </div>
                            <div>
                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Status</p>
-                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${booking.status === 'Upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${booking.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
                                {booking.status}
                              </span>
                            </div>
                            <div className="hidden md:block">
                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Price</p>
-                             <p className="text-sm font-bold">{booking.price}</p>
+                             <p className="text-sm font-bold">₹{booking.totalAmount}</p>
                            </div>
                         </div>
                       </div>
@@ -241,8 +272,8 @@ const Dashboard = () => {
             {tab === "notifications" && (
               <div className="animate-fade-up">
                 <h2 className="text-2xl font-bold text-foreground mb-8">Notifications</h2>
-                <div className="space-y-4">
-                  {mockNotifications.map((n) => (
+                 <div className="space-y-4">
+                  {notifications.map((n) => (
                     <div key={n.id} className={`flex items-start gap-4 p-5 rounded-2xl border transition-all duration-300 ${n.read ? "border-border bg-card/50 opacity-60" : "border-primary/20 bg-primary/5 shadow-sm"}`}>
                       <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${n.read ? "bg-muted-foreground/30" : "bg-primary shadow-sm"}`}></div>
                       <div className="flex-1">
@@ -266,8 +297,8 @@ const Dashboard = () => {
                         <input 
                           type="text" 
                           value={user?.name || ""}
-                          disabled
-                          className="w-full px-5 py-4 border-2 border-border rounded-2xl bg-muted/30 text-muted-foreground font-bold border-dashed opacity-70 cursor-not-allowed" 
+                          onChange={(e) => setUser({ ...user, name: e.target.value })}
+                          className="w-full px-5 py-4 border-2 border-border rounded-2xl bg-background text-foreground font-bold outline-none focus:border-primary transition-all" 
                         />
                       </div>
                       <div className="space-y-3">
@@ -412,6 +443,20 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-card border-2 border-border p-10 rounded-[3rem] shadow-2xl max-w-sm w-full text-center animate-in zoom-in-95 duration-300">
+            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
+              <CheckCircle className="w-12 h-12 text-primary" />
+            </div>
+            <h3 className="text-2xl font-black text-foreground uppercase tracking-tighter mb-4">Updated successfully!</h3>
+            <button onClick={() => setShowSuccessPopup(false)} className="w-full bg-primary text-primary-foreground font-black py-4 rounded-2xl shadow-xl shadow-primary/20 uppercase tracking-[0.2em] text-[10px] hover:scale-105 transition-all">
+              Continue
+            </button>
           </div>
         </div>
       )}

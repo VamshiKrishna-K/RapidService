@@ -107,8 +107,8 @@ const Hero = ({ onSearch }) => {
             Connect with top-rated local professionals for any job — from home
             repairs to personal services.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 bg-card rounded-2xl p-3 shadow-2xl mb-8 relative z-50 border border-white/10 backdrop-blur-md">
-            <div className="flex items-center gap-2 flex-1 px-4 py-3 rounded-xl bg-background border border-border">
+          <div className="flex flex-col sm:flex-row gap-3 bg-card rounded-2xl p-3 shadow-2xl mb-8 relative z-50 backdrop-blur-md">
+            <div className="flex items-center gap-2 flex-1 px-4 py-3 rounded-xl bg-background">
               <Search className="w-5 h-5 text-muted-foreground shrink-0" />
               <input
                 type="text"
@@ -118,7 +118,7 @@ const Hero = ({ onSearch }) => {
                 className="bg-transparent outline-none w-full text-foreground placeholder:text-muted-foreground font-medium"
               />
             </div>
-            <div className="flex items-center gap-2 flex-1 px-4 py-3 rounded-xl bg-background border border-border relative">
+            <div className="flex items-center gap-2 flex-1 px-4 py-3 rounded-xl bg-background relative">
               <MapPin className="w-5 h-5 text-muted-foreground shrink-0" />
               <input
                 type="text"

@@ -120,3 +120,27 @@ exports.updateBookingStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get user/provider bookings
+// @route   GET /api/bookings
+// @access  Private
+exports.getBookings = async (req, res) => {
+  try {
+    let query = {};
+    if (req.user.role === 'provider') {
+      query.provider = req.user._id;
+    } else {
+      query.customer = req.user._id;
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('provider', 'name email address')
+      .populate('customer', 'name email address')
+      .populate('service', 'title category basePrice')
+      .sort({ createdAt: -1 });
+
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -1,33 +1,60 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { ArrowLeft, CheckCircle, MapPin, Clock, CreditCard, Shield, X, Loader2 } from "lucide-react";
-import { mockProviders } from "@/lib/mock-data";
+import api from "@/lib/api";
 
 const BookingConfirmation = () => {
   const { providerId } = useParams();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const serviceIndex = parseInt(queryParams.get("service") || "0");
+  const serviceId = queryParams.get("serviceId");
   const slot = queryParams.get("slot") || "Not selected";
 
-  const provider = mockProviders.find((p) => p.id === providerId);
+  const [provider, setProvider] = useState(null);
+  const [service, setService] = useState(null);
   const [step, setStep] = useState("review");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!provider) {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [userRes, servicesRes] = await Promise.all([
+          api.get(`/auth/${providerId}`),
+          api.get(`/services`, { params: { providerId: providerId } })
+        ]);
+        setProvider(userRes.data);
+        const targetService = servicesRes.data.find(s => s._id === serviceId) || servicesRes.data[0];
+        setService(targetService);
+      } catch (error) {
+        console.error("Booking fetch error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [providerId, serviceId]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!provider || !service) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center animate-fade-up">
            <X className="w-16 h-16 text-destructive mx-auto mb-6" />
-           <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Session Expired</h2>
-           <p className="text-muted-foreground mb-8">No provider found for this booking session.</p>
+           <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Session Invalid</h2>
+           <p className="text-muted-foreground mb-8">No booking session found.</p>
            <Link to="/" className="bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs">Return Home</Link>
         </div>
       </div>
     );
   }
-
-  const service = provider.services[serviceIndex] || provider.services[0];
 
   const handlePayment = () => {
     setIsProcessing(true);
@@ -52,15 +79,17 @@ const BookingConfirmation = () => {
           <div className="bg-card border-2 border-border rounded-[2.5rem] p-8 text-left mb-10 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16"></div>
             <div className="flex items-center gap-5 mb-8 relative z-10">
-              <img src={provider.avatar} alt={provider.name} className="w-16 h-16 rounded-2xl border-2 border-border" />
+              <div className="w-16 h-16 rounded-2xl border-2 border-border bg-muted flex items-center justify-center font-black text-primary">
+                {provider.name?.charAt(0)}
+              </div>
               <div>
                 <h3 className="font-black text-foreground uppercase tracking-tight">{provider.name}</h3>
-                <p className="text-xs font-black text-primary uppercase tracking-widest">{service.name}</p>
+                <p className="text-xs font-black text-primary uppercase tracking-widest">{service.title}</p>
               </div>
             </div>
             <div className="space-y-4 text-xs font-black uppercase tracking-widest relative z-10">
               <div className="flex justify-between border-b border-border pb-4"><span className="text-muted-foreground">Schedule</span><span className="text-foreground">{slot}</span></div>
-              <div className="flex justify-between border-b border-border pb-4"><span className="text-muted-foreground">Investment</span><span className="text-foreground">₹{service.price}</span></div>
+              <div className="flex justify-between border-b border-border pb-4"><span className="text-muted-foreground">Investment</span><span className="text-foreground">₹{service.basePrice}</span></div>
               <div className="flex justify-between pt-2"><span className="text-muted-foreground">Status</span><span className="text-[#10b981]">Confirmed</span></div>
             </div>
           </div>
@@ -77,7 +106,7 @@ const BookingConfirmation = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground shadow-xl">
         <div className="container py-10">
-          <Link to={`/provider/${provider.id}`} className="inline-flex items-center gap-2 text-primary-foreground/70 hover:text-white mb-6 transition-colors">
+          <Link to={`/provider/${provider._id}`} className="inline-flex items-center gap-2 text-primary-foreground/70 hover:text-white mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Profile
           </Link>
           <h1 className="text-3xl font-black uppercase tracking-tight">{step === "review" ? "Confirm Reservation" : "Secure Payment"}</h1>
@@ -102,17 +131,19 @@ const BookingConfirmation = () => {
                  <div className="w-2 h-2 bg-primary rounded-full"></div> Service Summary
               </h3>
               <div className="flex items-center gap-6 mb-10">
-                <img src={provider.avatar} alt={provider.name} className="w-20 h-20 rounded-[1.5rem] border-2 border-border" />
+                <div className="w-20 h-20 rounded-[1.5rem] border-2 border-border bg-muted flex items-center justify-center font-black text-3xl text-primary">
+                  {provider.name?.charAt(0)}
+                </div>
                 <div>
                   <h4 className="text-2xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                    {provider.name} {provider.verified && <CheckCircle className="w-5 h-5 text-[#10b981]" />}
+                    {provider.name} <CheckCircle className="w-5 h-5 text-[#10b981]" />
                   </h4>
-                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">{provider.category} Specialist</p>
+                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">{service.category} Specialist</p>
                 </div>
               </div>
               <div className="space-y-6 border-t-2 border-border border-dashed pt-8">
-                <div className="flex justify-between items-center"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Selected Task</span><span className="text-sm font-black text-foreground uppercase">{service.name}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Duration</span><span className="text-sm font-black text-foreground uppercase">{service.duration}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Selected Task</span><span className="text-sm font-black text-foreground uppercase">{service.title}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Duration</span><span className="text-sm font-black text-foreground uppercase">Estimated</span></div>
                 <div className="flex justify-between items-center"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> Service Hub</span><span className="text-sm font-black text-foreground uppercase">{provider.location}</span></div>
               </div>
             </div>
@@ -120,11 +151,11 @@ const BookingConfirmation = () => {
             <div className="bg-card border-2 border-border rounded-[3rem] p-10 shadow-sm transition-all hover:shadow-xl">
               <h3 className="text-sm font-black text-foreground uppercase tracking-[0.2em] mb-8">Billing Breakdown</h3>
               <div className="space-y-4 text-xs font-black uppercase tracking-widest">
-                <div className="flex justify-between"><span className="text-muted-foreground">Base Labor</span><span className="text-foreground">₹{service.price}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Base Labor</span><span className="text-foreground">₹{service.basePrice}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Platform Access</span><span className="text-foreground">₹50</span></div>
                 <div className="border-t-2 border-border pt-6 mt-4 flex justify-between items-center">
                    <span className="text-foreground text-sm">Total Investment</span>
-                   <span className="text-3xl font-black text-primary">₹{parseInt(service.price) + 50}</span>
+                   <span className="text-3xl font-black text-primary">₹{parseInt(service.basePrice) + 50}</span>
                 </div>
               </div>
             </div>
@@ -176,7 +207,7 @@ const BookingConfirmation = () => {
               className="w-full bg-[#10b981] text-white font-black py-6 rounded-2xl shadow-2xl shadow-green-500/20 uppercase tracking-[0.2em] text-xs hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shield className="w-5 h-5" />}
-              {isProcessing ? "Authorizing Vault..." : `Authorize Payment (₹${parseInt(service.price) + 50})`}
+              {isProcessing ? "Authorizing Vault..." : `Authorize Payment (₹${parseInt(service.basePrice) + 50})`}
             </button>
           </div>
         )}
