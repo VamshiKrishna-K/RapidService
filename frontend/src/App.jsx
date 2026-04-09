@@ -12,7 +12,7 @@ import BookingConfirmation from "./pages/BookingConfirmation.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ProviderDashboard from "./pages/ProviderDashboard.jsx";
 import Chat from "./pages/Chat.jsx";
-import HowItWorks from "./pages/HowItWorks.jsx";
+
 import About from "./pages/About.jsx";
 
 const queryClient = new QueryClient();
@@ -32,7 +32,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/provider-dashboard" element={<ProviderDashboard />} />
           <Route path="/chat" element={<Chat />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
+          
           <Route path="/about" element={<About />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -30,9 +30,9 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { label: "Explorer", path: "/", icon: Home },
-    { label: "Operation", path: "/how-it-works", icon: HelpCircle },
-    { label: "Blueprint", path: "/about", icon: Info },
+    { label: "Explore", path: "/", icon: Home },
+
+    { label: "About", path: "/about", icon: Info },
   ];
 
   const isHome = location.pathname === "/";
@@ -81,13 +81,13 @@ const Navbar = () => {
                 to="/login"
                 className={`text-[10px] font-black uppercase tracking-widest hover:underline ${scrolled || !isHome ? "text-foreground" : "text-white"}`}
               >
-                Access
+                Sign In
               </Link>
               <Link
                 to="/register"
                 className={`px-8 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl active:scale-95 ${scrolled || !isHome ? "bg-primary text-primary-foreground shadow-primary/20" : "bg-accent text-accent-foreground shadow-accent/20"}`}
               >
-                Join Network
+                Sign Up
               </Link>
             </div>
           )}
@@ -129,7 +129,7 @@ const Navbar = () => {
                   className="flex items-center gap-4 bg-primary/10 text-primary font-black uppercase tracking-widest text-[10px] py-4 px-6 rounded-2xl"
                 >
                   <User className="w-5 h-5" />
-                  Execution Hub
+                  Dashboard
                 </Link>
                 <button
                   onClick={() => {
@@ -139,7 +139,7 @@ const Navbar = () => {
                   className="w-full flex items-center gap-4 text-destructive font-black uppercase tracking-widest text-[10px] py-4 px-6 rounded-2xl hover:bg-destructive/10 transition-all"
                 >
                   <LogOut className="w-5 h-5" />
-                  Terminate Session
+                  Logout
                 </button>
               </>
             ) : (
@@ -149,14 +149,14 @@ const Navbar = () => {
                   onClick={() => setOpen(false)}
                   className="flex items-center justify-center bg-muted text-foreground font-black uppercase tracking-widest text-[10px] py-4 rounded-2xl"
                 >
-                  Access
+                  Sign In
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setOpen(false)}
                   className="flex items-center justify-center bg-accent text-accent-foreground font-black uppercase tracking-widest text-[10px] py-4 rounded-2xl"
                 >
-                  Join
+                  Sign Up
                 </Link>
               </div>
             )}

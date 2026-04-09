@@ -92,7 +92,7 @@ const Login = () => {
             <Link to="/" className="text-2xl font-black font-display text-primary tracking-tighter mb-4 flex items-center gap-2">
               <ShieldCheck className="w-8 h-8" /> RAPIDSERVICE
             </Link>
-            <h2 className="text-4xl font-black text-foreground uppercase tracking-tight mb-2">Member Portal</h2>
+            <h2 className="text-4xl font-black text-foreground uppercase tracking-tight mb-2">Sign In</h2>
             <p className="text-muted-foreground font-medium">Verify your credentials to continue your journey.</p>
           </div>
 
@@ -157,12 +157,12 @@ const Login = () => {
               type="submit" 
               className="w-full bg-primary text-primary-foreground font-black py-5 rounded-2xl shadow-2xl shadow-primary/20 uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Authorize Entry"}
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
             </button>
           </form>
 
           <div className="mt-12 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-             New to the platform? <Link to="/register" className="text-primary hover:underline ml-1">Establish Account</Link>
+             New to the platform? <Link to="/register" className="text-primary hover:underline ml-1">Create Account</Link>
           </div>
         </div>
       </div>

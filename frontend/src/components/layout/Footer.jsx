@@ -32,11 +32,11 @@ const Footer = () => {
             },
             {
               title: "Ecosystem",
-              links: ["Provider Network", "Career Portal", "Strategic Blog", "Press Releases"],
+              links: ["Service Providers", "Careers", "Blog", "Press Releases"],
             },
             {
               title: "Legal & Support",
-              links: ["Operational Terms", "Privacy Vault", "Contact HQ", "System Status"],
+              links: ["Terms of Service", "Privacy Policy", "Contact Us", "System Status"],
             },
           ].map((col) => (
             <div key={col.title}>

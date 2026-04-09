@@ -99,7 +99,7 @@ const Register = () => {
             <Link to="/" className="text-2xl font-black font-display text-primary tracking-tighter mb-4 flex items-center gap-2">
               <ShieldCheck className="w-8 h-8" /> RAPIDSERVICE
             </Link>
-            <h2 className="text-4xl font-black text-foreground uppercase tracking-tight mb-2">Establish Identity</h2>
+            <h2 className="text-4xl font-black text-foreground uppercase tracking-tight mb-2">Create Account</h2>
             <p className="text-muted-foreground font-medium">Create your credentials to join the ecosystem.</p>
           </div>
 
@@ -176,12 +176,12 @@ const Register = () => {
               type="submit" 
               className="w-full bg-primary text-primary-foreground font-black py-5 rounded-2xl shadow-2xl shadow-primary/20 uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Establish Membership"}
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign Up"}
             </button>
           </form>
 
           <div className="mt-12 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-             Already a member? <Link to="/login" className="text-primary hover:underline ml-1">Access Portal</Link>
+             Already a member? <Link to="/login" className="text-primary hover:underline ml-1">Sign In</Link>
           </div>
         </div>
       </div>

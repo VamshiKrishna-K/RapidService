@@ -18,9 +18,9 @@ const About = () => {
              <Building2 className="w-8 h-8 text-accent" />
           </div>
           <span className="text-accent font-black tracking-[0.3em] uppercase text-xs mb-4 block">Corporate Identity</span>
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.9] mb-8">Redefining the <br/><span className="underline decoration-4 underline-offset-8">Local Network</span></h1>
+          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.9] mb-8">Local Service Marketplace</h1>
           <p className="text-xl text-primary-foreground/70 leading-relaxed font-medium max-w-2xl mx-auto italic">
-            "Eliminating friction between project needs and elite professional execution since 2024."
+            "Eliminating friction between project needs and elite professional execution since 2026."
           </p>
         </div>
       </section>
