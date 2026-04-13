@@ -1,21 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Calendar, Bell, User, MapPin, X, Check, Loader2, LogOut, Search, Phone, CheckCircle } from "lucide-react";
-import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api';
+import { Calendar, Bell, User, MapPin, X, Loader2, LogOut, Search, Phone, CheckCircle, Check, Shield } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import MapPickerModal from '../components/shared/MapPickerModal';
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%'
-};
-
-const defaultCenter = {
-  lat: 17.3850,
-  lng: 78.4867
-};
-
-const libraries = ["places"];
+const defaultCenter = [17.3850, 78.4867];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -31,17 +21,11 @@ const Dashboard = () => {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [currentAddress, setCurrentAddress] = useState("");
   const [currentPhone, setCurrentPhone] = useState("");
-  const [tempAddress, setTempAddress] = useState("");
   const [markerPos, setMarkerPos] = useState(defaultCenter);
-  const [autocomplete, setAutocomplete] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY",
-    libraries: libraries
-  });
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [isTransactionOpen, setIsTransactionOpen] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("userInfo");
@@ -64,7 +48,7 @@ const Dashboard = () => {
       setCurrentAddress(data.address || "");
       setCurrentPhone(data.phone || "");
       if (data.lat && data.lng) {
-        setMarkerPos({ lat: data.lat, lng: data.lng });
+        setMarkerPos([data.lat, data.lng]);
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -84,60 +68,6 @@ const Dashboard = () => {
     }
   };
 
-  const onMarkerDragEnd = (e) => {
-    if (e.latLng) {
-      const nextPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-      setMarkerPos(nextPos);
-      setTempAddress(`${nextPos.lat.toFixed(4)}, ${nextPos.lng.toFixed(4)} (Location Pinned)`);
-    }
-  };
-
-  const onMapClick = (e) => {
-    if (e.latLng) {
-      const nextPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-      setMarkerPos(nextPos);
-      setTempAddress(`${nextPos.lat.toFixed(4)}, ${nextPos.lng.toFixed(4)} (Location Pinned)`);
-    }
-  };
-
-  const onLoad = (autoC) => {
-    setAutocomplete(autoC);
-  };
-
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        const nextPos = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
-        };
-        setMarkerPos(nextPos);
-        setTempAddress(`${nextPos.lat.toFixed(4)}, ${nextPos.lng.toFixed(4)} (Location Pinned)`);
-      }
-    }
-  };
-
-  const handleLocateMe = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const { longitude, latitude } = position.coords;
-        const nextPos = { lat: latitude, lng: longitude };
-        setMarkerPos(nextPos);
-        setTempAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      }, (error) => {
-        console.error("Error getting location", error);
-        toast.error("Unable to retrieve your location. Please check your browser permissions.");
-      });
-    }
-  };
-
-  const handleMapConfirm = () => {
-    setCurrentAddress(tempAddress || "Selected Location, Hyderabad");
-    setIsMapOpen(false);
-    setTab("profile");
-  };
-
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -146,8 +76,8 @@ const Dashboard = () => {
         name: user.name,
         phone: currentPhone,
         address: currentAddress,
-        lat: markerPos.lat,
-        lng: markerPos.lng
+        lat: markerPos[0],
+        lng: markerPos[1]
       }, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
@@ -187,16 +117,20 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-4">
-             <button onClick={handleLogout} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold transition-all border border-white/10">
-               <LogOut className="w-5 h-5" /> Logout
-             </button>
+              {user?.role === 'admin' && (
+                <Link to="/admin" className="flex items-center gap-2 bg-accent hover:bg-accent/80 text-accent-foreground px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-accent/20">
+                  <Shield className="w-5 h-5" /> System Management
+                </Link>
+              )}
+              <button onClick={handleLogout} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold transition-all border border-white/10">
+                <LogOut className="w-5 h-5" /> Logout
+              </button>
           </div>
         </div>
       </header>
 
       <main className="container py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
           <div className="hidden lg:block">
             <nav className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm sticky top-24">
               {[
@@ -218,7 +152,6 @@ const Dashboard = () => {
             </nav>
           </div>
 
-          {/* Content Area */}
           <div className="lg:col-span-3">
             {tab === "bookings" && (
               <div className="animate-fade-up">
@@ -235,14 +168,23 @@ const Dashboard = () => {
                       <Link to="/" className="text-primary font-bold">Start exploring services</Link>
                     </div>
                   ) : (
-                    bookings.map(booking => (
-                      <div key={booking._id} className="bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow">
+                    bookings.map(booking => {
+                      const isPaid = booking.status === 'completed';
+                      return (
+                      <div 
+                        key={booking._id} 
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setIsTransactionOpen(true);
+                        }}
+                        className={`bg-card border-2 ${isPaid ? 'border-[#10b981] bg-[#10b981]/5 shadow-xl shadow-[#10b981]/20 scale-[1.01]' : 'border-border hover:border-primary/30'} rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm hover:shadow-md transition-all cursor-pointer group`}
+                      >
                         <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isPaid ? 'bg-[#10b981] text-white' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'}`}>
                              <Calendar className="w-6 h-6" />
                            </div>
                            <div>
-                             <h3 className="font-bold text-foreground">{booking.service?.title || "Unknown Service"}</h3>
+                             <h3 className={`font-bold transition-colors ${isPaid ? 'text-[#10b981]' : 'text-foreground group-hover:text-primary'}`}>{booking.service?.title || "Unknown Service"}</h3>
                              <p className="text-sm text-muted-foreground font-medium">with {booking.provider?.name || "Professional"}</p>
                            </div>
                         </div>
@@ -253,8 +195,8 @@ const Dashboard = () => {
                            </div>
                            <div>
                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Status</p>
-                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${booking.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                               {booking.status}
+                             <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${isPaid ? 'bg-[#10b981] text-white shadow-md shadow-[#10b981]/30' : booking.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                               {isPaid ? 'Paid & Confirmed' : booking.status}
                              </span>
                            </div>
                            <div className="hidden md:block">
@@ -263,7 +205,7 @@ const Dashboard = () => {
                            </div>
                         </div>
                       </div>
-                    ))
+                    )})
                   )}
                 </div>
               </div>
@@ -345,10 +287,7 @@ const Dashboard = () => {
                         />
                         <button 
                           type="button"
-                          onClick={() => {
-                            setTempAddress(currentAddress);
-                            setIsMapOpen(true);
-                          }}
+                          onClick={() => setIsMapOpen(true)}
                           className="flex items-center justify-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
                         >
                           <MapPin className="w-4 h-4" /> Pick on Map
@@ -374,78 +313,21 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* Map Picker Modal */}
-      {isMapOpen && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-          <div className="bg-card border border-border w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[85vh] animate-fade-up">
-            <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-                  <MapPin className="text-primary w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">Set Your Delivery Point</h3>
-                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Pin your exact home for our pros</p>
-                </div>
-              </div>
-
-              {isLoaded && (
-                <div className="flex-1 max-w-sm w-full">
-                   <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-                     <div className="relative">
-                       <input
-                         type="text"
-                         placeholder="Search your street..."
-                         className="w-full pl-11 pr-4 py-4 bg-muted/50 border-2 border-border rounded-2xl text-sm font-bold shadow-sm outline-none focus:border-primary transition-all"
-                       />
-                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                     </div>
-                   </Autocomplete>
-                </div>
-              )}
-              <button onClick={() => setIsMapOpen(false)} className="p-3 hover:bg-muted rounded-2xl transition-all">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 relative overflow-hidden bg-muted">
-              {isLoaded ? (
-                <>
-                  <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    center={markerPos}
-                    zoom={15}
-                    onClick={onMapClick}
-                    options={{ disableDefaultUI: true }}
-                  >
-                    <Marker position={markerPos} draggable={true} onDragEnd={onMarkerDragEnd} />
-                  </GoogleMap>
-                  
-                  <div className="absolute bottom-6 right-6 flex items-center gap-3">
-                    <button 
-                      onClick={handleLocateMe}
-                      className="w-12 h-12 bg-white text-primary rounded-2xl shadow-xl flex items-center justify-center hover:scale-110 transition-all border border-border"
-                    >
-                      <MapPin className="w-6 h-6" />
-                    </button>
-                    
-                    <button 
-                      onClick={handleMapConfirm}
-                      className="bg-[#10b981] text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all"
-                    >
-                      Confirm This Spot
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <MapPickerModal 
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        onConfirm={(pos, addr) => {
+          setMarkerPos(pos);
+          setCurrentAddress(addr);
+          setIsMapOpen(false);
+          setTab("profile");
+        }}
+        initialPos={markerPos}
+        radius={null}
+        title="Set Delivery point"
+        subTitle="Pin your exact location"
+        confirmText="Confirm Spot"
+      />
 
       {showSuccessPopup && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
@@ -461,7 +343,95 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Mobile Navigation */}
+      {/* Transaction Page Modal */}
+      {isTransactionOpen && selectedBooking && (
+        <div className="fixed inset-0 bg-background/90 backdrop-blur-xl z-[300] overflow-y-auto p-4 sm:p-6 flex justify-center animate-in fade-in duration-500">
+           <div className="bg-card border-4 border-border/50 rounded-[4rem] shadow-[0_0_100px_rgba(0,0,0,0.1)] max-w-2xl w-full relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-20 duration-500 my-auto h-fit">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32"></div>
+              
+              <button 
+                onClick={() => setIsTransactionOpen(false)}
+                className="absolute top-10 right-10 w-12 h-12 bg-muted rounded-full flex items-center justify-center hover:bg-destructive hover:text-white transition-all z-20"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="p-10 md:p-16">
+                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16 border-b-4 border-border border-dashed pb-12">
+                    <div>
+                        <div className="bg-primary text-primary-foreground px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] w-fit mb-6">Confirmed Order</div>
+                        <h2 className="text-4xl font-black text-foreground uppercase tracking-tighter mb-2">Transaction Detail</h2>
+                        <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Reference: RS-{selectedBooking._id.slice(-8).toUpperCase()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Booking Date</p>
+                        <p className="text-lg font-black text-foreground">{new Date(selectedBooking.scheduleDate).toLocaleDateString()}</p>
+                    </div>
+                 </div>
+
+                 <div className="space-y-12">
+                    <div>
+                        <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-6">Professional Intelligence</h4>
+                        <div className="flex items-center gap-6">
+                            <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center font-black text-primary text-3xl border-2 border-primary/20">
+                                {selectedBooking.provider?.name?.charAt(0)}
+                            </div>
+                            <div>
+                                <h5 className="text-2xl font-black text-foreground uppercase tracking-tight">{selectedBooking.provider?.name}</h5>
+                                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                   <MapPin className="w-3 h-3" /> {selectedBooking.provider?.address || "Main Site"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-muted px-10 py-8 rounded-[3rem] space-y-6">
+                        <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Billing Ledger</h4>
+                        <div className="space-y-4">
+                           <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
+                              <span className="text-muted-foreground">{selectedBooking.service?.title} Labor</span>
+                              <span className="text-foreground">₹{selectedBooking.totalAmount - 50}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
+                              <span className="text-muted-foreground">Platform Access Fee</span>
+                              <span className="text-foreground">₹50</span>
+                           </div>
+                           <div className="border-t-2 border-border pt-6 mt-6 flex justify-between items-center">
+                              <div>
+                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Authorized</p>
+                                 <p className="text-4xl font-black text-primary uppercase">₹{selectedBooking.totalAmount}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                {selectedBooking?.status === 'completed' ? (
+                                  <div className="bg-[#10b981] text-white px-6 py-3 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[9px] shadow-lg shadow-[#10b981]/20 animate-pulse">
+                                     <Check className="w-4 h-4" /> Payment Verified
+                                  </div>
+                                ) : selectedBooking?.status === 'accepted' ? (
+                                  <button 
+                                    onClick={() => navigate('/payment', { state: { bookingData: selectedBooking, providerName: selectedBooking.provider?.name, price: selectedBooking.totalAmount, isPaymentRetry: true } })}
+                                    className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-2xl flex items-center gap-2 font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+                                  >
+                                    Pay Now
+                                  </button>
+                                ) : (
+                                  <div className="bg-amber-100 text-amber-700 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[9px]">
+                                     Waiting for Acceptance...
+                                  </div>
+                                )}
+                              </div>
+                           </div>
+                        </div>
+                    </div>
+                 </div>
+
+                 <div className="mt-16 flex justify-center">
+                    <button onClick={() => setIsTransactionOpen(false)} className="bg-foreground text-background font-black px-12 py-5 rounded-2xl uppercase tracking-[0.2em] text-xs hover:scale-105 active:scale-95 transition-all">Close Record</button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-border z-50 px-6 py-4">
         <div className="flex items-center justify-between">
           {[
@@ -487,4 +457,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

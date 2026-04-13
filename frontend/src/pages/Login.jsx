@@ -29,7 +29,8 @@ const Login = () => {
 
       localStorage.setItem("userInfo", JSON.stringify(data));
       toast.success("Welcome back! Signed in with Google.");
-      navigate(data.role === "provider" ? "/provider-dashboard" : "/dashboard");
+      const targetPath = data.role === "admin" ? "/admin" : (data.role === "provider" ? "/provider-dashboard" : "/dashboard");
+      navigate(targetPath);
     } catch (error) {
       console.error(error);
       toast.error(error.response?.data?.message || "Google authentication failed");
@@ -47,7 +48,8 @@ const Login = () => {
       const { data } = await api.post("/auth/login", { email, password });
       localStorage.setItem("userInfo", JSON.stringify(data));
       toast.success("Login successful!");
-      navigate(data.role === "provider" ? "/provider-dashboard" : "/dashboard");
+      const targetPath = data.role === "admin" ? "/admin" : (data.role === "provider" ? "/provider-dashboard" : "/dashboard");
+      navigate(targetPath);
     } catch (error) {
       toast.error(error.response?.data?.message || "Invalid email or password");
     } finally {
@@ -123,7 +125,7 @@ const Login = () => {
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <input 
-                  type="email" 
+                  type="text" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   placeholder="name@domain.com" 

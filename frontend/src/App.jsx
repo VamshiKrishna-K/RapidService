@@ -12,8 +12,9 @@ import BookingConfirmation from "./pages/BookingConfirmation.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ProviderDashboard from "./pages/ProviderDashboard.jsx";
 import Chat from "./pages/Chat.jsx";
-
+import Admin from "./pages/Admin.jsx";
 import About from "./pages/About.jsx";
+import Payment from "./pages/Payment.jsx";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/provider-dashboard" element={<ProviderDashboard />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/payment" element={<Payment />} />
           
           <Route path="/about" element={<About />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

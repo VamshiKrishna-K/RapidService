@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, MapPin, Clock, CreditCard, Shield, X, Loader2 } from "lucide-react";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 const BookingConfirmation = () => {
+  const navigate = useNavigate();
   const { providerId } = useParams();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -56,13 +58,40 @@ const BookingConfirmation = () => {
     );
   }
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     setIsProcessing(true);
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      // Calculate total amount (base + platform fee)
+      const totalAmount = parseInt(service.basePrice) + 50;
+      
+      const bookingData = {
+        providerId,
+        serviceId,
+        scheduleDate: new Date().toISOString(), // In a real app, this would be the selected date
+        totalAmount
+      };
+
+      await api.post("/bookings", bookingData);
+      
+      toast.success("Service Booked Successfully!", {
+        description: `Your appointment with ${provider.name} is confirmed.`,
+        duration: 4000
+      });
+
+      // Artificial delay for premium feel
+      setTimeout(() => {
+        setIsProcessing(false);
+        setStep("confirmed");
+        // Automatically route to dashboard after a few seconds
+        setTimeout(() => {
+           navigate("/dashboard");
+        }, 2500);
+      }, 1500);
+    } catch (error) {
+      console.error("Booking failed:", error);
+      alert(error.response?.data?.message || "Payment authorization failed. Please try again.");
       setIsProcessing(false);
-      setStep("confirmed");
-    }, 2000);
+    }
   };
 
   if (step === "confirmed") {

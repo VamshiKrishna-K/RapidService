@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle, MapPin, Shield, Star, MessageCircle, Calendar, Clock, Globe, User, Phone, X, Loader2 } from "lucide-react";
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, CheckCircle, MapPin, Shield, Star, MessageCircle, Calendar, Clock, User, Loader2, Phone, Check } from "lucide-react";
 import api from "@/lib/api";
+import { toast } from "sonner";
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-const containerStyle = {
-  width: '100%',
-  height: '100%'
-};
+// Fix Leaflet marker icon issue
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const ProviderDetail = () => {
   const { id } = useParams();
@@ -17,6 +28,10 @@ const ProviderDetail = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [tab, setTab] = useState("services");
+  const [showPhone, setShowPhone] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,10 +51,47 @@ const ProviderDetail = () => {
     fetchData();
   }, [id]);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY"
-  });
+  const handleFullBooking = async () => {
+    if (selectedService === null || !selectedSlot) {
+      toast.error("Please select a service and time slot first");
+      return;
+    }
+
+    setIsBooking(true);
+    try {
+      const service = services[selectedService];
+      const totalAmount = parseInt(service.basePrice) + 50;
+      
+      // Combine date and slot for a more precise schedule
+      const [year, month, day] = bookingDate.split('-').map(Number);
+      const [time, period] = selectedSlot.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      const scheduledTime = new Date(year, month - 1, day, hours, minutes).toISOString();
+      
+      const bookingData = {
+        providerId: id,
+        serviceId: service._id,
+        scheduleDate: scheduledTime,
+        totalAmount
+      };
+
+      await api.post("/bookings", bookingData);
+      
+      toast.success("Service Request Sent!", {
+        description: `Your appointment request with ${provider.name} is now pending.`,
+      });
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+    } catch (error) {
+      console.error("Booking generation failed:", error);
+      toast.error(error.response?.data?.message || "Failed to initiate booking");
+      setIsBooking(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -63,10 +115,10 @@ const ProviderDetail = () => {
     );
   }
 
-  const center = {
-    lat: (provider.coordinates && provider.coordinates[1]) || 17.3850,
-    lng: (provider.coordinates && provider.coordinates[0]) || 78.4867
-  };
+  const center = [
+    (provider.coordinates && provider.coordinates[1]) || 17.3850,
+    (provider.coordinates && provider.coordinates[0]) || 78.4867
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-20 lg:pb-0">
@@ -89,14 +141,22 @@ const ProviderDetail = () => {
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
                 <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight">{provider.name}</h1>
-                <span className="bg-accent/20 text-accent text-[10px] font-black px-4 py-2 rounded-xl border border-accent/30 uppercase tracking-[0.2em] shadow-sm">
-                  Top Rated Professional
-                </span>
               </div>
               <p className="text-lg text-primary-foreground/70 mb-8 max-w-2xl font-medium leading-relaxed italic">"{provider.bio}"</p>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary-foreground/90">
                 <span className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-5 py-2.5 rounded-xl border border-white/10 shadow-sm"><Star className="w-4 h-4 fill-accent text-accent" /> {provider.rating} ({provider.reviewCount} Reviews)</span>
                 <span className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-5 py-2.5 rounded-xl border border-white/10 shadow-sm"><MapPin className="w-4 h-4 text-accent" /> {provider.location}</span>
+                <button 
+                  onClick={() => setShowPhone(true)} 
+                  className={`flex items-center gap-2 bg-white/5 backdrop-blur-md px-5 py-2.5 rounded-xl border border-white/10 shadow-sm transition-all ${!showPhone ? 'hover:bg-white/10 cursor-pointer' : 'cursor-default'}`}
+                >
+                  <Phone className="w-4 h-4 text-accent" /> 
+                  {showPhone ? (
+                    <a href={`tel:${provider.phone}`} className="hover:underline">{provider.phone}</a>
+                  ) : (
+                    "Display Number"
+                  )}
+                </button>
                 <span className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-5 py-2.5 rounded-xl border border-white/10 shadow-sm"><Shield className="w-4 h-4 text-accent" /> {provider.completedJobs} Jobs Done</span>
               </div>
             </div>
@@ -152,21 +212,11 @@ const ProviderDetail = () => {
 
             {tab === "location" && (
               <div className="animate-fade-up">
-                 <div className="bg-card border-2 border-border rounded-[3rem] overflow-hidden shadow-2xl h-[500px] relative group">
-                    {isLoaded ? (
-                      <GoogleMap
-                        mapContainerStyle={containerStyle}
-                        center={center}
-                        zoom={15}
-                        options={{ disableDefaultUI: true }}
-                      >
-                         <Marker position={center} />
-                      </GoogleMap>
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center">
-                         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                      </div>
-                    )}
+                 <div className="bg-card border-2 border-border rounded-[3rem] overflow-hidden shadow-2xl h-[600px] relative group">
+                    <MapContainer center={center} zoom={15} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
+                        <Marker position={center} />
+                    </MapContainer>
                  </div>
               </div>
             )}
@@ -205,7 +255,12 @@ const ProviderDetail = () => {
                    
                    <div className="space-y-4">
                      <label className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] ml-2 block">Set Date</label>
-                     <input type="date" className="w-full px-6 py-4 border-2 border-border rounded-2xl bg-background text-foreground font-bold outline-none focus:border-primary transition-all shadow-sm" />
+                     <input 
+                        type="date" 
+                        value={bookingDate}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="w-full px-6 py-4 border-2 border-border rounded-2xl bg-background text-foreground font-bold outline-none focus:border-primary transition-all shadow-sm" 
+                     />
                    </div>
 
                    <div className="space-y-4">
@@ -223,12 +278,14 @@ const ProviderDetail = () => {
                      </div>
                    </div>
 
-                   <Link 
-                     to={`/booking/${provider._id}?serviceId=${services[selectedService]._id}&slot=${selectedSlot}`} 
-                     className={`block w-full text-center py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl ${selectedSlot ? "bg-[#10b981] text-white shadow-green-500/20 hover:scale-105 active:scale-95" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"}`}
+                   <button 
+                     onClick={handleFullBooking}
+                     disabled={!selectedSlot || isBooking}
+                     className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl flex items-center justify-center gap-2 ${selectedSlot ? "bg-[#10b981] text-white shadow-green-500/20 hover:scale-105 active:scale-95" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"}`}
                    >
-                     Complete Booking
-                   </Link>
+                     {isBooking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                     {isBooking ? "Confirming..." : "Complete Booking"}
+                   </button>
                  </div>
                ) : (
                 <div className="text-center py-12 space-y-6">
@@ -247,4 +304,3 @@ const ProviderDetail = () => {
 };
 
 export default ProviderDetail;
-

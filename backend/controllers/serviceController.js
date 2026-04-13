@@ -31,8 +31,8 @@ exports.getServices = async (req, res) => {
       if (maxPrice) query.basePrice.$lte = Number(maxPrice);
     }
     query.isActive = true;
-
-    let services = await Service.find(query).populate('provider', 'name rating location');
+    
+    let services = await Service.find(query).populate('provider', 'name rating location serviceRadius');
 
     // Recommendation Engine Scoring
     // Score = (w1 * NormalizedRating) + (w2 * NormalizedDistanceInverse) + (w3 * NormalizedPriceInverse)
@@ -52,14 +52,15 @@ exports.getServices = async (req, res) => {
 
         const rating = service.provider?.rating || 0;
         const normalizedRating = rating / 5;
-        const normalizedDistanceInverse = Math.max(0, (15 - distance) / 15); // Assumes 15km max radius
+        const pRadius = service.provider?.serviceRadius || 15;
+        const normalizedDistanceInverse = Math.max(0, (pRadius - distance) / pRadius);
         const normalizedPriceInverse = Math.max(0, (1000 - service.basePrice) / 1000); // Inverse price assumption
 
         const score = (w1 * normalizedRating) + (w2 * normalizedDistanceInverse) + (w3 * normalizedPriceInverse);
 
-        return { ...service._doc, distance, score };
+        return { ...service._doc, distance, score, pRadius };
       })
-      .filter(service => service.distance <= 15)
+      .filter(service => service.distance <= service.pRadius)
       .sort((a, b) => b.score - a.score);
     }
 

