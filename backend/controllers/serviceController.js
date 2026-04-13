@@ -44,7 +44,7 @@ exports.getServices = async (req, res) => {
       const userLng = parseFloat(lng);
 
       services = services.map(service => {
-        let distance = 50; // max default distance if no location
+        let distance = 999; // default high distance if no location
         if (service.provider && service.provider.location && service.provider.location.coordinates) {
           const [pLng, pLat] = service.provider.location.coordinates;
           distance = getDistanceFromLatLonInKm(userLat, userLng, pLat, pLng);
@@ -52,16 +52,15 @@ exports.getServices = async (req, res) => {
 
         const rating = service.provider?.rating || 0;
         const normalizedRating = rating / 5;
-        const normalizedDistanceInverse = Math.max(0, (50 - distance) / 50); // Assumes 50km max radius
+        const normalizedDistanceInverse = Math.max(0, (15 - distance) / 15); // Assumes 15km max radius
         const normalizedPriceInverse = Math.max(0, (1000 - service.basePrice) / 1000); // Inverse price assumption
 
         const score = (w1 * normalizedRating) + (w2 * normalizedDistanceInverse) + (w3 * normalizedPriceInverse);
 
         return { ...service._doc, distance, score };
-      });
-
-      // Sort by recommendation score (highest first)
-      services.sort((a, b) => b.score - a.score);
+      })
+      .filter(service => service.distance <= 15)
+      .sort((a, b) => b.score - a.score);
     }
 
     res.json(services);

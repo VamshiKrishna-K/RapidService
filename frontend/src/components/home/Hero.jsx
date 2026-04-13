@@ -2,7 +2,7 @@ import { Search, MapPin, ArrowRight, X, Check, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import heroBg from "@/assets/hero-bg.jpg";
-import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, Autocomplete, Circle } from '@react-google-maps/api';
 
 const mapContainerStyle = {
   width: '100%',
@@ -137,8 +137,13 @@ const Hero = ({ onSearch }) => {
             </div>
             <button 
               onClick={() => {
-                const [lat, lng] = location.split(", ").map(Number);
-                onSearch(service, lat, lng);
+                const parts = location.split(", ");
+                if (parts.length === 2) {
+                  const [lat, lng] = parts.map(Number);
+                  onSearch(service, lat, lng);
+                } else {
+                  onSearch(service);
+                }
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs px-8 py-4 rounded-xl transition-all shadow-lg shadow-primary/20 shrink-0 hover:scale-105 active:scale-95"
             >
@@ -184,7 +189,7 @@ const Hero = ({ onSearch }) => {
                 </div>
                 <div>
                   <h3 className="text-xl font-black uppercase tracking-tight">Set Search Center</h3>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Discover services in your neighborhood</p>
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Discover services within 15km</p>
                 </div>
               </div>
 
@@ -218,7 +223,7 @@ const Hero = ({ onSearch }) => {
                   <GoogleMap
                     mapContainerStyle={mapContainerStyle}
                     center={markerPos}
-                    zoom={13}
+                    zoom={11}
                     onClick={onMapClick}
                     options={{
                       disableDefaultUI: true,
@@ -235,6 +240,19 @@ const Hero = ({ onSearch }) => {
                       position={markerPos} 
                       draggable={true} 
                       onDragEnd={onMarkerDragEnd}
+                    />
+                    <Circle
+                      center={markerPos}
+                      radius={15000}
+                      options={{
+                        strokeColor: "#3b82f6",
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2,
+                        fillColor: "#3b82f6",
+                        fillOpacity: 0.1,
+                        clickable: false,
+                        visible: true
+                      }}
                     />
                   </GoogleMap>
                   
@@ -279,7 +297,7 @@ const Hero = ({ onSearch }) => {
                   </div>
                </div>
                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest max-w-[200px] text-center md:text-right hidden sm:block">
-                 PIN THE CENTER OF THE AREA YOU WANT TO EXPLORE
+                 ALL RESULTS WILL BE FILTERED WITHIN THE 15KM RADIUS
                </p>
             </div>
           </div>
@@ -290,4 +308,3 @@ const Hero = ({ onSearch }) => {
 };
 
 export default Hero;
-
