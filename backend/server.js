@@ -3,8 +3,6 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const http = require('http');
-const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 
 // Load env vars
@@ -14,45 +12,11 @@ dotenv.config();
 connectDB();
 
 const app = express();
-const server = http.createServer(app);
-
-// Socket.io for real-time features
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-});
-
 // Middleware
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
-
-// Socket.io connection logic
-io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-
-  // Join user room for notifications
-  socket.on('join', (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined room`);
-  });
-
-  // Handle chat messages
-  socket.on('sendMessage', (data) => {
-    // data: { senderId, receiverId, message }
-    io.to(data.receiverId).emit('receiveMessage', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
-  });
-});
-
-// Make io accessible in routing if needed
-app.set('io', io);
 
 // Basic Route
 app.get('/', (req, res) => {
@@ -74,8 +38,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+// For local development
+if (process.env.NODE_ENV !== 'production' || process.env.RUN_LOCAL === 'true') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  });
+}
 
-server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-});
+// Export the Express app for Vercel
+module.exports = app;
