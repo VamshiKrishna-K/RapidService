@@ -1,13 +1,11 @@
 {
   "name": "rapid-service-monorepo",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
-    "build": "npm run build --prefix frontend"
+    "build": "cd frontend && npm install && npm run build",
+    "install-backend": "cd backend && npm install",
+    "postinstall": "npm run install-backend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
